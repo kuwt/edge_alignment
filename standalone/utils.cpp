@@ -77,16 +77,16 @@ void get_distance_transform( const cv::Mat& input, cv::Mat& out_distance_transfo
     // Suppress noise with median filter
     cv::Mat B_filtered;
     medianBlur( B, B_filtered, 3 );
-    get_distance_transform_debug( cv::imshow( "edge map", B_filtered ) );
-
+    //get_distance_transform_debug( cv::imshow( "edge map", B_filtered ) );
+    cv::imwrite("edge_map.png", B_filtered);
     //
     // Distance Transform
     //
     cv::Mat dist;
     distanceTransform(B_filtered, dist, cv::DIST_L2, 3);
     normalize(dist, dist, 0, 1., cv::NORM_MINMAX);
-    get_distance_transform_debug( imshow("Distance Transform Image", dist) );
-
+    //get_distance_transform_debug( imshow("Distance Transform Image", dist) );
+    cv::imwrite("Distance_Transform_Image.png", dist);
     out_distance_transform = dist;
 
 }
@@ -108,8 +108,8 @@ void get_aX( const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d
     cv::Mat imA_laplacian, imA_laplacian_8uc1;
     cv::Laplacian( imA_gray, imA_laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT );
     cv::convertScaleAbs( imA_laplacian, imA_laplacian_8uc1 );
-    cv::imshow( "imA_laplacian_8uc1",imA_laplacian_8uc1);
-
+    //cv::imshow( "imA_laplacian_8uc1",imA_laplacian_8uc1);
+    cv::imwrite("imA_laplacian_8uc1.png", imA_laplacian_8uc1);
 
     int npixels = imA.rows*imA.cols;
     Eigen::MatrixXd all_aX = Eigen::MatrixXd( 4, npixels ); // stores all 3d co-ordinates
@@ -199,5 +199,6 @@ void s_overlay( const cv::Mat& im, const Eigen::MatrixXd& uv, const char * win_n
         im_out.at<cv::Vec3b>( uv(1,i), uv(0,i) ) = color;
     }
 
-    cv::imshow( win_name, im_out );
+    //cv::imshow( win_name, im_out );
+    cv::imwrite(win_name, im_out);
 }
