@@ -18,8 +18,8 @@ using namespace std;
 string type2str(int type);
 string mat_info( const cv::Mat& im );
 
-void get_aX( const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d& K, Eigen::MatrixXd& a_X );
-
+void get_aX( const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d& K, const float zScaling, Eigen::MatrixXd& a_X );
+void get_AllaX(const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d& K, const float zScaling, Eigen::MatrixXd& a_X);
 void get_distance_transform( const cv::Mat& input, cv::Mat& out_distance_transform );
 
 

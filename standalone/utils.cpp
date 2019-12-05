@@ -56,8 +56,8 @@ void get_distance_transform( const cv::Mat& input, cv::Mat& out_distance_transfo
     cv::Mat _laplacian, _laplacian_8uc1;
     cv::Laplacian( _gray, _laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT );
     cv::convertScaleAbs( _laplacian, _laplacian_8uc1 );
-    get_distance_transform_debug( cv::imshow( "_laplacian_8uc1", _laplacian_8uc1) );
-
+    //get_distance_transform_debug( cv::imshow( "_laplacian_8uc1", _laplacian_8uc1) );
+	cv::imwrite("_laplacian_8uc1.png", _laplacian_8uc1);
     //
     // Threshold gradients
     // TODO - use cv::Threshold
@@ -92,9 +92,14 @@ void get_distance_transform( const cv::Mat& input, cv::Mat& out_distance_transfo
 }
 
 
-void get_aX( const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d& K, Eigen::MatrixXd& a_X )
+void get_aX(
+	const cv::Mat& imA, 
+	const cv::Mat& imA_depth, 
+	const Eigen::Matrix3d& K,
+	const float zScaling,
+	Eigen::MatrixXd& a_X )
 {
-    double factor=5000.; // as stated on TUM website: 5000 corresponds to 1m, 10000 corresponds to 2m and so on.
+    double factor= zScaling; // as stated on TUM website: 5000 corresponds to 1m, 10000 corresponds to 2m and so on.
     double fx = K(0,0), fy=K(1,1), cx=K(0,2), cy=K(1,2);
 
 
@@ -169,6 +174,63 @@ void get_aX( const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d
     }
 }
 
+void get_AllaX(const cv::Mat& imA, 
+	const cv::Mat& imA_depth, 
+	const Eigen::Matrix3d& K,
+	const float zScaling,
+	Eigen::MatrixXd& a_X)
+{
+	double factor = 5000.; // as stated on TUM website: 5000 corresponds to 1m, 10000 corresponds to 2m and so on.
+	double fx = K(0, 0), fy = K(1, 1), cx = K(0, 2), cy = K(1, 2);
+
+	//
+	// Image Gradient
+	//
+	cv::Mat imA_blur, imA_gray;
+	cv::GaussianBlur(imA, imA_blur, cv::Size(3, 3), 0, 0, cv::BORDER_DEFAULT);
+	cv::cvtColor(imA_blur, imA_gray, CV_RGB2GRAY);
+
+	cv::Mat imA_laplacian, imA_laplacian_8uc1;
+	cv::Laplacian(imA_gray, imA_laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT);
+	cv::convertScaleAbs(imA_laplacian, imA_laplacian_8uc1);
+	//cv::imshow( "imA_laplacian_8uc1",imA_laplacian_8uc1);
+	cv::imwrite("imA_laplacian_8uc1.png", imA_laplacian_8uc1);
+
+	int npixels = imA.rows*imA.cols;
+	Eigen::MatrixXd all_aX = Eigen::MatrixXd(4, npixels); // stores all 3d co-ordinates
+	Eigen::VectorXd all_grad = Eigen::VectorXd(npixels); // stores gradients at those points
+	Eigen::MatrixXd all_aU = Eigen::MatrixXd(3, npixels);  // images point co-ordinates
+
+														   //
+														   // (u,v) --> (X,Y,Z)
+														   //
+	int c = 0;
+	for (int v = 0; v<imA.rows; v++)
+	{
+		for (int u = 0; u<imA.cols; u++)
+		{
+			double Z = double(imA_depth.at<ushort>(v, u)) / factor;
+			double X = (u - cx) * Z / fx;
+			double Y = (v - cy) * Z / fy;
+			// cout << "X,Y,Z" << X << "," << Y << "," << Z << endl;
+
+			all_aX(0, c) = X;
+			all_aX(1, c) = Y;
+			all_aX(2, c) = Z;
+			all_aX(3, c) = 1.;
+
+			all_grad(c) = imA_laplacian_8uc1.at<uchar>(v, u);
+
+			all_aU(0, c) = u;
+			all_aU(1, c) = v;
+			all_aU(2, c) = 1.0;
+			c++;
+
+		}
+	}
+	a_X = all_aX;
+	
+}
 
 // Reprojects the 3D points a_X (in frame-of-ref of imA) using the transformation b_T_a (pose of a in frame-of-ref of b).
 // K : Camera intrinsic. b_u is the output. as of now the distortion params are ignored.
