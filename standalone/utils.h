@@ -21,7 +21,7 @@ string mat_info( const cv::Mat& im );
 void get_aX( const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d& K, const float zScaling, Eigen::MatrixXd& a_X );
 void get_AllaX(const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d& K, const float zScaling, Eigen::MatrixXd& a_X);
 void get_distance_transform( const cv::Mat& input, cv::Mat& out_distance_transform );
-
+void get_distance_transform2(const cv::Mat& input, cv::Mat& out_distance_transform);
 
 void reproject( const Eigen::MatrixXd& a_X, const Eigen::Matrix4d& b_T_a, const Eigen::Matrix3d& K, Eigen::MatrixXd& b_u );
 void s_overlay( const cv::Mat& im, const Eigen::MatrixXd& uv, const char * win_name);

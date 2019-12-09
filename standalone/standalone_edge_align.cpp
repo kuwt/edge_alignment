@@ -312,11 +312,11 @@ int edge_align_test2()
 	* ****************************************** */
 
 	// Load Image A and its Depth image
-	cv::Mat imA = cv::imread("../rgb-d2/rgb/1_Color.png");
+	cv::Mat imA = cv::imread("../rgb-d2/rgb/1_Colorm.png");
 	cv::Mat imA_depth = cv::imread("../rgb-d2/depth/1_Depth2.png", CV_LOAD_IMAGE_ANYDEPTH);
 	//
 	// Load Image B. No depth is needed for this
-	cv::Mat imB = cv::imread("../rgb-d2/rgb/2_Color.png");
+	cv::Mat imB = cv::imread("../rgb-d2/rgb/1_Colorm2.png");
 
 	//
 	// Print Info on Images
@@ -325,9 +325,9 @@ int edge_align_test2()
 	cout << "imA_depth.type " << mat_info(imA_depth) << endl; 
 	cout << "imB.type " << mat_info(imB) << endl; 
 
-	cv::imwrite("A.png", imA);
-	cv::imwrite("B.png", imB);
-	cv::imwrite("imA_depth.png", imA_depth);
+	cv::imwrite("./log/A.png", imA);
+	cv::imwrite("./log/B.png", imB);
+	cv::imwrite("./log/imA_depth.png", imA_depth);
 
 	double min, max;
 	cv::minMaxLoc(imA_depth, &min, &max);
@@ -371,7 +371,7 @@ int edge_align_test2()
 		edgePointcloud.at<float>(i, 1) = a_X(1, i);
 		edgePointcloud.at<float>(i, 2) = a_X(2, i);
 	}
-	SavePointCloudToObj("sceneEdgeCloud.obj", edgePointcloud, CV_32FC1);
+	SavePointCloudToObj("./log/sceneEdgeCloud.obj", edgePointcloud, CV_32FC1);
 
 
 	Eigen::MatrixXd all_a_X;
@@ -384,7 +384,7 @@ int edge_align_test2()
 		pointcloud.at<float>(i, 1) = all_a_X(1, i);
 		pointcloud.at<float>(i, 2) = all_a_X(2, i);
 	}
-	SavePointCloudToObj("sceneCloud.obj", pointcloud, CV_32FC1);
+	SavePointCloudToObj("./log/sceneCloud.obj", pointcloud, CV_32FC1);
 	/***********************************************
 	*
 	* Get Distance Transform
@@ -393,9 +393,9 @@ int edge_align_test2()
 	//
 	// Distance Transform of edges of imB
 	cv::Mat disTrans;
-	get_distance_transform(imB, disTrans);
+	get_distance_transform2(imB, disTrans);
 	// cv::imshow("Distance Transform Image", disTrans); //numbers between 0 and 1.
-	cv::imwrite("Distance Transform Image.png", disTrans * 255);
+	cv::imwrite("./log/Distance Transform Image.png", disTrans * 255);
 
 	Eigen::MatrixXd e_disTrans;
 	cv::cv2eigen(disTrans, e_disTrans);
@@ -437,7 +437,7 @@ int edge_align_test2()
 	cout << "Initial Guess : " << PoseManipUtils::prettyprintMatrix4d(b_T_a_optvar) << endl;
 	Eigen::MatrixXd b_u;
 	reproject(a_X, b_T_a_optvar, K, b_u);
-	s_overlay(imB, b_u, "initial.png");
+	s_overlay(imB, b_u, "./log/initial.png");
 
 	/***********************************************
 	*
@@ -459,7 +459,7 @@ int edge_align_test2()
 	// Residues for each 3d points
 	ceres::Problem problem;
 	int count = 0;
-	for (int i = 0; i< a_X.cols(); i += 30)
+	for (int i = 0; i< a_X.cols(); i += 10)
 	{
 		// ceres::CostFunction * cost_function = EAResidue::Create( K, a_X.col(i), interpolated_imb_disTrans);
 
@@ -467,7 +467,7 @@ int edge_align_test2()
 		problem.AddResidualBlock(cost_function, new CauchyLoss(1.), b_quat_a, b_t_a);
 		count++;
 	}
-	std::cout << "Point count = " << count << "\n";
+	std::cout << "-----> Use Point count = " << count << "\n";
 
 	ceres::LocalParameterization * quaternion_parameterization = new ceres::QuaternionParameterization;
 	problem.SetParameterization(b_quat_a, quaternion_parameterization);
@@ -496,7 +496,7 @@ int edge_align_test2()
 	cout << "Final Guess : " << PoseManipUtils::prettyprintMatrix4d(b_T_a_optvar) << endl;
 
 	reproject(a_X, b_T_a_optvar, K, b_u);
-	s_overlay(imB, b_u, "final.png");
+	s_overlay(imB, b_u, "./log/final.png");
 }
 
 int main()

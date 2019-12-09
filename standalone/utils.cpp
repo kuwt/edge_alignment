@@ -35,60 +35,80 @@ string mat_info( const cv::Mat& im )
     return s;
 }
 
-
-// #define get_distance_transform_debug(msg) msg
-#define get_distance_transform_debug(msg)
-void get_distance_transform( const cv::Mat& input, cv::Mat& out_distance_transform )
+void get_distance_transform(const cv::Mat& input, cv::Mat& out_distance_transform)
 {
-    // Thresholds that influcence this:
-    // a. Gaussian Blur size
-    // b. Threshold for the gradient map. How you compute gradient also matter. here i m using Laplacian operator. Results will differ with Sobel for example.
-    // c. Window size for median blur
-    // d. Params for distance transform computation.
+	// Thresholds that influcence this:
+	// a. Gaussian Blur size
+	// b. Threshold for the gradient map. How you compute gradient also matter. here i m using Laplacian operator. Results will differ with Sobel for example.
+	// c. Window size for median blur
+	// d. Params for distance transform computation.
 
-    //
-    // Edge Map
-    //
-    cv::Mat _blur, _gray;
-    cv::GaussianBlur( input, _blur, cv::Size(3,3), 0, 0, cv::BORDER_DEFAULT );
-    cv::cvtColor( _blur, _gray, CV_RGB2GRAY );
+	//
+	// Edge Map
+	//
+	cv::Mat _blur, _gray;
+	cv::GaussianBlur(input, _blur, cv::Size(3, 3), 0, 0, cv::BORDER_DEFAULT);
+	cv::cvtColor(_blur, _gray, CV_RGB2GRAY);
 
-    cv::Mat _laplacian, _laplacian_8uc1;
-    cv::Laplacian( _gray, _laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT );
-    cv::convertScaleAbs( _laplacian, _laplacian_8uc1 );
-    //get_distance_transform_debug( cv::imshow( "_laplacian_8uc1", _laplacian_8uc1) );
+	cv::Mat _laplacian, _laplacian_8uc1;
+	cv::Laplacian(_gray, _laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT);
+	cv::convertScaleAbs(_laplacian, _laplacian_8uc1);
+	//get_distance_transform_debug( cv::imshow( "_laplacian_8uc1", _laplacian_8uc1) );
 	cv::imwrite("_laplacian_8uc1.png", _laplacian_8uc1);
-    //
-    // Threshold gradients
-    // TODO - use cv::Threshold
-    cv::Mat B = cv::Mat::ones( _laplacian.rows, _laplacian.cols, CV_8UC1 ) * 255;
-    for( int v=0 ; v<_laplacian.rows ; v++ )
-    {
-        for( int u=0 ; u<_laplacian.cols ; u++ )
-        {
-            if( _laplacian_8uc1.at<uchar>(v,u) > 35 )
-            {
-                B.at<uchar>(v,u) = 0;
-            }
-        }
-    }
+	//
+	// Threshold gradients
+	// TODO - use cv::Threshold
+	cv::Mat B = cv::Mat::ones(_laplacian.rows, _laplacian.cols, CV_8UC1) * 255;
+	for (int v = 0; v<_laplacian.rows; v++)
+	{
+		for (int u = 0; u<_laplacian.cols; u++)
+		{
+			if (_laplacian_8uc1.at<uchar>(v, u) > 35)
+			{
+				B.at<uchar>(v, u) = 0;
+			}
+		}
+	}
 
-    //
-    // Suppress noise with median filter
-    cv::Mat B_filtered;
-    medianBlur( B, B_filtered, 3 );
-    //get_distance_transform_debug( cv::imshow( "edge map", B_filtered ) );
-    cv::imwrite("edge_map.png", B_filtered);
-    //
-    // Distance Transform
-    //
-    cv::Mat dist;
-    distanceTransform(B_filtered, dist, cv::DIST_L2, 3);
-    normalize(dist, dist, 0, 1., cv::NORM_MINMAX);
-    //get_distance_transform_debug( imshow("Distance Transform Image", dist) );
-    cv::imwrite("Distance_Transform_Image.png", dist);
-    out_distance_transform = dist;
+	//
+	// Suppress noise with median filter
+	cv::Mat B_filtered;
+	medianBlur(B, B_filtered, 3);
+	//get_distance_transform_debug( cv::imshow( "edge map", B_filtered ) );
+	cv::imwrite("edge_map.png", B_filtered);
+	//
+	// Distance Transform
+	//
+	cv::Mat dist;
+	distanceTransform(B_filtered, dist, cv::DIST_L2, 3);
+	normalize(dist, dist, 0, 1., cv::NORM_MINMAX);
+	//get_distance_transform_debug( imshow("Distance Transform Image", dist) );
+	cv::imwrite("Distance_Transform_Image.png", dist);
+	out_distance_transform = dist;
+}
 
+void get_distance_transform2(const cv::Mat& input, cv::Mat& out_distance_transform)
+{
+	cv::Mat img_blur;
+	cv::blur(input, img_blur, cv::Size(3, 3));
+
+	cv::Mat img_blurBW;
+	cv::cvtColor(img_blur, img_blurBW, CV_RGB2GRAY);
+	cv::imwrite("./log/img_blur.png", img_blurBW);
+
+	cv::Mat canny_img;
+	cv::Canny(img_blurBW, canny_img, 0, 30);
+	cv::Mat B = canny_img;
+	cv::imwrite("./log/canny_img.png", canny_img);
+
+	//
+	// Distance Transform
+	//
+	cv::Mat dist;
+	distanceTransform(B, dist, cv::DIST_L2, 3);
+	normalize(dist, dist, 0, 1., cv::NORM_MINMAX);
+
+	out_distance_transform = dist;
 }
 
 
@@ -102,7 +122,6 @@ void get_aX(
     double factor= zScaling; // as stated on TUM website: 5000 corresponds to 1m, 10000 corresponds to 2m and so on.
     double fx = K(0,0), fy=K(1,1), cx=K(0,2), cy=K(1,2);
 
-
     //
     // Image Gradient
     //
@@ -114,7 +133,7 @@ void get_aX(
     cv::Laplacian( imA_gray, imA_laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT );
     cv::convertScaleAbs( imA_laplacian, imA_laplacian_8uc1 );
     //cv::imshow( "imA_laplacian_8uc1",imA_laplacian_8uc1);
-    cv::imwrite("imA_laplacian_8uc1.png", imA_laplacian_8uc1);
+    cv::imwrite("./log/imA_laplacian_8uc1.png", imA_laplacian_8uc1);
 
     int npixels = imA.rows*imA.cols;
     Eigen::MatrixXd all_aX = Eigen::MatrixXd( 4, npixels ); // stores all 3d co-ordinates
@@ -145,7 +164,6 @@ void get_aX(
             all_aU( 1, c ) = v;
             all_aU( 2, c ) = 1.0;
             c++;
-
         }
     }
 
@@ -194,7 +212,7 @@ void get_AllaX(const cv::Mat& imA,
 	cv::Laplacian(imA_gray, imA_laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT);
 	cv::convertScaleAbs(imA_laplacian, imA_laplacian_8uc1);
 	//cv::imshow( "imA_laplacian_8uc1",imA_laplacian_8uc1);
-	cv::imwrite("imA_laplacian_8uc1.png", imA_laplacian_8uc1);
+	cv::imwrite("./log/imA_laplacian_8uc1.png", imA_laplacian_8uc1);
 
 	int npixels = imA.rows*imA.cols;
 	Eigen::MatrixXd all_aX = Eigen::MatrixXd(4, npixels); // stores all 3d co-ordinates
