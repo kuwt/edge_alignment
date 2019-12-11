@@ -314,8 +314,8 @@ int edge_align_test2()
 	* ****************************************** */
 
 	// Load Image A and its Depth image
-	cv::Mat imA = cv::imread("../rgb-d3/Image0001.png");
-	cv::Mat imA_depth = cv::imread("../rgb-d3/depth0001.png", CV_LOAD_IMAGE_ANYDEPTH);
+	cv::Mat imA = cv::imread("../rgb-d3/1/Image0001.png");
+	cv::Mat imA_depth = cv::imread("../rgb-d3/1/depth0001.png", CV_LOAD_IMAGE_ANYDEPTH);
 	//
 	// Load Image B. No depth is needed for this
 	cv::Mat imB = cv::imread("../rgb-d3/0036.bmp");
