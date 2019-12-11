@@ -19,6 +19,7 @@ string type2str(int type);
 string mat_info( const cv::Mat& im );
 
 void get_aX( const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d& K, const float zScaling, Eigen::MatrixXd& a_X );
+void get_aX2( const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d& K, const float zScaling, Eigen::MatrixXd& a_X );
 void get_AllaX(const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d& K, const float zScaling, Eigen::MatrixXd& a_X);
 void get_distance_transform( const cv::Mat& input, cv::Mat& out_distance_transform );
 void get_distance_transform2(const cv::Mat& input, cv::Mat& out_distance_transform);
