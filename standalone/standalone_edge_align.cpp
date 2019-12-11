@@ -105,6 +105,7 @@ int SavePointCloudToObj(const std::string saveToPath, const cv::Mat &points, int
 	return 0;
 }
 
+// original test,  align two images
 int edge_align_test1()
 {
     /**********************************************
@@ -303,6 +304,7 @@ int edge_align_test1()
     s_overlay( imB, b_u, "final.png" );
 }
 
+// my test1, align two images
 int edge_align_test2()
 {
 	/**********************************************
@@ -312,11 +314,11 @@ int edge_align_test2()
 	* ****************************************** */
 
 	// Load Image A and its Depth image
-	cv::Mat imA = cv::imread("../rgb-d2/rgb/1_Colorm.png");
-	cv::Mat imA_depth = cv::imread("../rgb-d2/depth/1_Depth2.png", CV_LOAD_IMAGE_ANYDEPTH);
+	cv::Mat imA = cv::imread("../rgb-d3/Image0001.png");
+	cv::Mat imA_depth = cv::imread("../rgb-d3/depth0001.png", CV_LOAD_IMAGE_ANYDEPTH);
 	//
 	// Load Image B. No depth is needed for this
-	cv::Mat imB = cv::imread("../rgb-d2/rgb/1_Colorm2.png");
+	cv::Mat imB = cv::imread("../rgb-d3/0036.bmp");
 
 	//
 	// Print Info on Images
@@ -334,16 +336,18 @@ int edge_align_test2()
 	cout << "imA_depth min,max: " << min << " " << max << endl;
 	//
 	// DONE printing debug info on images
-	cout << "=========== Done ============\n";
+	
 	/***********************************************
 	*
 	*  getting calibration parameters
 	*
 	* ********************************************/
+    cout << "=========== calibration parameters ============\n";
 	//
 	// Intrinsic Calibration. Obtained from https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats
 	Eigen::Matrix3d K;
-	double fx = 320.377, fy = 320.377, cx = 322.565, cy = 179.8;
+	//double fx = 320.377, fy = 320.377, cx = 322.565, cy = 179.8;
+    double fx = 2167.430, fy = 2168.014, cx = 621.946, cy = 404.4;
 	K << fx, 0., cx, 0., fy, cy, 0., 0., 1.;
 	cout << "K\n" << K << endl;
 
@@ -352,8 +356,8 @@ int edge_align_test2()
 	//cout << "D\n" << D << endl;
 
 
-	float  zScaling = 1000;
-	cout << "zScaling\n" << zScaling << endl;
+	float  zScaling = 10000;
+	cout << "zScaling = " << zScaling << endl;
 	/***********************************************
 	*
 	*  Get 3D points using the depth image and
@@ -361,6 +365,7 @@ int edge_align_test2()
 	* ********************************************/
 	//
 	// Get 3D points of imA as a 4xN matrix. ^aX. These 3d points are in frame-of-ref of imA.
+    cout << "=========== Get 3D points ============\n";
 	Eigen::MatrixXd a_X;
 	get_aX(imA, imA_depth, K, zScaling, a_X);
 	cout << "Total number of Edge points = " << a_X.cols() << endl;
@@ -392,10 +397,11 @@ int edge_align_test2()
 	* ********************************************/
 	//
 	// Distance Transform of edges of imB
+    cout << "=========== Distance Transform ============\n";
 	cv::Mat disTrans;
 	get_distance_transform2(imB, disTrans);
 	// cv::imshow("Distance Transform Image", disTrans); //numbers between 0 and 1.
-	cv::imwrite("./log/Distance Transform Image.png", disTrans * 255);
+	cv::imwrite("./log/Distance_Transform_Image.png", disTrans * 255);
 
 	Eigen::MatrixXd e_disTrans;
 	cv::cv2eigen(disTrans, e_disTrans);
@@ -405,10 +411,11 @@ int edge_align_test2()
 	*  Verification
 	*
 	* ********************************************/
-#if 1
+#if 0
 	//
 	// Verify if everything is OK.
 	// Use the 3d points are reproject of imA and overlay those reprojected points.
+    cout << "=========== Verification ============\n";
 	cout << "a_X\n" << a_X.leftCols(10) << endl;
 	for (int ss = 0; ss<150; ss += 10)
 	{
@@ -432,6 +439,7 @@ int edge_align_test2()
 	*
 	* ********************************************/
 	// Initial Guess
+    cout << "===========  Initial Guess ============\n";
 	Eigen::Matrix4d b_T_a_optvar = Eigen::Matrix4d::Identity();
 
 	cout << "Initial Guess : " << PoseManipUtils::prettyprintMatrix4d(b_T_a_optvar) << endl;
@@ -447,7 +455,7 @@ int edge_align_test2()
 	////////////////////////////////////////////////////////////////////////////
 	///////////////////// Setup non-linear Least Squares ///////////////////////
 	////////////////////////////////////////////////////////////////////////////
-
+    cout << "===========  Solve ============\n";
 	// Using `a_X` and `disTrans` setup the non-linear least squares problem
 	cout << "e_disTrans.shape = " << e_disTrans.rows() << ", " << e_disTrans.cols() << endl;
 	ceres::Grid2D<double, 1> grid(e_disTrans.data(), 0, e_disTrans.cols(), 0, e_disTrans.rows());
@@ -492,12 +500,17 @@ int edge_align_test2()
 	*  Result
 	*
 	* ********************************************/
+     cout << "===========  Result ============\n";
 	PoseManipUtils::raw_to_eigenmat(b_quat_a, b_t_a, b_T_a_optvar);
 	cout << "Final Guess : " << PoseManipUtils::prettyprintMatrix4d(b_T_a_optvar) << endl;
 
 	reproject(a_X, b_T_a_optvar, K, b_u);
 	s_overlay(imB, b_u, "./log/final.png");
 }
+
+// my test2
+
+
 
 int main()
 {
