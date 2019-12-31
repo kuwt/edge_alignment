@@ -195,7 +195,7 @@ void get_aX(
     }
 }
 
-void get_aX2(
+void get_aX_ex(
 	const cv::Mat& imA, 
 	const cv::Mat& imA_depth, 
 	const Eigen::Matrix3d& K,
@@ -336,6 +336,21 @@ void reproject( const Eigen::MatrixXd& a_X, const Eigen::Matrix4d& b_T_a, const 
     }
 
     b_u = K * unvn;
+}
+
+void reproject(const Eigen::MatrixXd& a_X, const Eigen::Matrix4d& b_T_a, const Eigen::Matrix4d& one_T_two, const Eigen::Matrix4d& two_T_one, const Eigen::Matrix3d& K, Eigen::MatrixXd& b_u)
+{
+	Eigen::MatrixXd b_X = one_T_two * b_T_a * two_T_one * a_X;
+
+	Eigen::MatrixXd unvn = Eigen::MatrixXd(3, b_X.cols());
+	for (int i = 0; i<b_X.cols(); i++)
+	{
+		unvn(0, i) = b_X(0, i) / b_X(2, i);
+		unvn(1, i) = b_X(1, i) / b_X(2, i);
+		unvn(2, i) = 1.0;
+	}
+
+	b_u = K * unvn;
 }
 
 void s_overlay( const cv::Mat& im, const Eigen::MatrixXd& uv, const char * win_name )
