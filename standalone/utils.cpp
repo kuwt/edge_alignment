@@ -195,7 +195,96 @@ void get_aX(
     }
 }
 
-void get_aX_ex(
+void get_aX_mask(
+	const cv::Mat& imA,
+	const cv::Mat& mask,
+	const cv::Mat& imA_depth,
+	const Eigen::Matrix3d& K,
+	const float zScaling,
+	Eigen::MatrixXd& a_X)
+{
+	double factor = zScaling; // as stated on TUM website: 5000 corresponds to 1m, 10000 corresponds to 2m and so on.
+	double fx = K(0, 0), fy = K(1, 1), cx = K(0, 2), cy = K(1, 2);
+
+	//
+	// Image Gradient
+	//
+	cv::Mat imA_blur, imA_gray;
+	cv::GaussianBlur(imA, imA_blur, cv::Size(3, 3), 0, 0, cv::BORDER_DEFAULT);
+	cv::cvtColor(imA_blur, imA_gray, CV_RGB2GRAY);
+
+	cv::Mat imA_laplacian, imA_laplacian_8uc1;
+	cv::Laplacian(imA_gray, imA_laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT);
+	cv::convertScaleAbs(imA_laplacian, imA_laplacian_8uc1);
+	cv::imwrite("./log/imA_laplacian_8uc1.png", imA_laplacian_8uc1);
+
+	int npixels = imA.rows*imA.cols;
+	Eigen::MatrixXd all_aX = Eigen::MatrixXd(4, npixels); // stores all 3d co-ordinates
+	Eigen::VectorXd all_grad = Eigen::VectorXd(npixels); // stores gradients at those points
+	Eigen::MatrixXd all_aU = Eigen::MatrixXd(3, npixels);  // images point co-ordinates
+
+	Eigen::VectorXd all_mask = Eigen::VectorXd(npixels); // stores mask at those points
+														   //
+														   // (u,v) --> (X,Y,Z)
+														   //
+	int c = 0;
+	for (int v = 0; v<imA.rows; v++)
+	{
+		for (int u = 0; u<imA.cols; u++)
+		{
+			double Z = double(imA_depth.at<ushort>(v, u)) / factor;
+			double X = (u - cx) * Z / fx;
+			double Y = (v - cy) * Z / fy;
+			// cout << "X,Y,Z" << X << "," << Y << "," << Z << endl;
+
+			all_aX(0, c) = X;
+			all_aX(1, c) = Y;
+			all_aX(2, c) = Z;
+			all_aX(3, c) = 1.;
+
+			all_grad(c) = imA_laplacian_8uc1.at<uchar>(v, u);
+
+			all_aU(0, c) = u;
+			all_aU(1, c) = v;
+			all_aU(2, c) = 1.0;
+
+			all_mask(c) = mask.at<uchar>(v, u) > 0 ? 255 : 0;
+
+			c++;
+		}
+	}
+
+
+	//
+	// Filter - Only keep 3d points with high gradient. Z=0 means invalid depth and are to be ignored
+	int n = 0;
+	double threshold = 35;
+	for (int i = 0; i<all_grad.size(); i++)
+	{
+		if (all_grad(i) > threshold && all_aX(2, i) > 0 && all_mask(i) > 0)
+		{
+			n++;
+		}
+	}
+	cout << n << " pts out of " << npixels << " have a large gradient after mask.\n";
+	cout << "Used threshold=" << threshold << "\n";
+
+	a_X = Eigen::MatrixXd::Zero(4, n);
+	int k = 0;
+	for (int i = 0; i<all_grad.size(); i++)
+	{
+		if (all_grad(i) > threshold && all_aX(2, i) > 0 && all_mask(i) > 0)
+		{
+			a_X(0, k) = all_aX(0, i);
+			a_X(1, k) = all_aX(1, i);
+			a_X(2, k) = all_aX(2, i);
+			a_X(3, k) = all_aX(3, i);
+			k++;
+		}
+	}
+}
+
+void get_aX_canny(
 	const cv::Mat& imA, 
 	const cv::Mat& imA_depth, 
 	const Eigen::Matrix3d& K,
