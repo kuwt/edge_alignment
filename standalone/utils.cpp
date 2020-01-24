@@ -53,8 +53,7 @@ void get_distance_transform(const cv::Mat& input, cv::Mat& out_distance_transfor
 	cv::Mat _laplacian, _laplacian_8uc1;
 	cv::Laplacian(_gray, _laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT);
 	cv::convertScaleAbs(_laplacian, _laplacian_8uc1);
-	//get_distance_transform_debug( cv::imshow( "_laplacian_8uc1", _laplacian_8uc1) );
-	cv::imwrite("_laplacian_8uc1.png", _laplacian_8uc1);
+
 	//
 	// Threshold gradients
 	// TODO - use cv::Threshold
@@ -74,16 +73,12 @@ void get_distance_transform(const cv::Mat& input, cv::Mat& out_distance_transfor
 	// Suppress noise with median filter
 	cv::Mat B_filtered;
 	medianBlur(B, B_filtered, 3);
-	//get_distance_transform_debug( cv::imshow( "edge map", B_filtered ) );
-	cv::imwrite("edge_map.png", B_filtered);
 	//
 	// Distance Transform
 	//
 	cv::Mat dist;
 	distanceTransform(B_filtered, dist, cv::DIST_L2, 3);
 	normalize(dist, dist, 0, 1., cv::NORM_MINMAX);
-	//get_distance_transform_debug( imshow("Distance Transform Image", dist) );
-	cv::imwrite("Distance_Transform_Image.png", dist);
 	out_distance_transform = dist;
 }
 
@@ -94,11 +89,9 @@ void get_distance_transform2(const cv::Mat& input, cv::Mat& out_distance_transfo
 
 	cv::Mat img_blurBW;
 	cv::cvtColor(img_blur, img_blurBW, CV_RGB2GRAY);
-	cv::imwrite("./log/img_blur.png", img_blurBW);
 
 	cv::Mat canny_img;
 	cv::Canny(img_blurBW, canny_img, 30, 90);
-	cv::imwrite("./log/canny_img.png", canny_img);
 
 	// inverted for dt
 	cv::Mat edges;
@@ -132,7 +125,6 @@ void get_aX(
     cv::Mat imA_laplacian, imA_laplacian_8uc1;
     cv::Laplacian( imA_gray, imA_laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT );
     cv::convertScaleAbs( imA_laplacian, imA_laplacian_8uc1 );
-    cv::imwrite("./log/imA_laplacian_8uc1.png", imA_laplacian_8uc1);
 
     int npixels = imA.rows*imA.cols;
     Eigen::MatrixXd all_aX = Eigen::MatrixXd( 4, npixels ); // stores all 3d co-ordinates
@@ -216,7 +208,6 @@ void get_aX_mask(
 	cv::Mat imA_laplacian, imA_laplacian_8uc1;
 	cv::Laplacian(imA_gray, imA_laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT);
 	cv::convertScaleAbs(imA_laplacian, imA_laplacian_8uc1);
-	cv::imwrite("./log/imA_laplacian_8uc1.png", imA_laplacian_8uc1);
 
 	int npixels = imA.rows*imA.cols;
 	Eigen::MatrixXd all_aX = Eigen::MatrixXd(4, npixels); // stores all 3d co-ordinates
@@ -319,11 +310,9 @@ void get_aX_canny(
 
 	cv::Mat img_blurBW;
 	cv::cvtColor(img_blur, img_blurBW, CV_RGB2GRAY);
-	cv::imwrite("./log/img_blur_A.png", img_blurBW);
 
 	cv::Mat canny_img;
 	cv::Canny(img_blurBW, canny_img, 30, 90);
-	cv::imwrite("./log/canny_img_A.png", canny_img);
 
     //
     // (u,v) --> (X,Y,Z)

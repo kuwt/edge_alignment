@@ -16,9 +16,5 @@ include_directories(
 set( CMAKE_CXX_FLAGS "-fpermissive -std=c++11 -O3" )
 
 
-
-add_executable( helloDemo hello.cpp )
-add_executable( edge_align standalone_edge_align.cpp utils.cpp PoseManipUtils.cpp)
-
-target_link_libraries( helloDemo )
+add_executable( edge_align standalone_edge_align.cpp utils.cpp PoseManipUtils.cpp tinyply.cpp) 
 target_link_libraries( edge_align  ${OpenCV_LIBRARIES} ${CERES_LIBRARIES} )
