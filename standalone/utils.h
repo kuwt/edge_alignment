@@ -25,7 +25,8 @@ void get_aX_canny(const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Mat
 void get_AllaX(const cv::Mat& imA, const cv::Mat& imA_depth, const Eigen::Matrix3d& K, const float zScaling, Eigen::MatrixXd& a_X);
 void get_distance_transform( const cv::Mat& input, cv::Mat& out_distance_transform );
 void get_distance_transform2(const cv::Mat& input, cv::Mat& out_distance_transform);
-
+void get_distance_transform2_masked(const cv::Mat& input, const cv::Mat& inputmask, cv::Mat& out_distance_transform);
+void get_distance_transform2_masked_normalize(const cv::Mat& input, const cv::Mat& inputmask, cv::Mat& out_distance_transform);
 void reproject( const Eigen::MatrixXd& a_X, const Eigen::Matrix4d& b_T_a, const Eigen::Matrix3d& K, Eigen::MatrixXd& b_u );
 void reproject(const Eigen::MatrixXd& a_X, const Eigen::Matrix4d& b_T_a, const Eigen::Matrix4d& one_T_two, const Eigen::Matrix4d& two_T_one, const Eigen::Matrix3d& K, Eigen::MatrixXd& b_u);
 void s_overlay( const cv::Mat& im, const Eigen::MatrixXd& uv, const char * win_name);
@@ -42,7 +43,6 @@ public:
         // cout << "---\n";
         // cout << "EAResidue.a_X: "<< a_X << endl;
         // cout << "fx=" << fx << "fy=" << fy << "cx=" << cx << "cy=" << cy << endl;
-
     }
 
     EAResidue(
@@ -63,38 +63,26 @@ public:
         b_T_a(2,3) = t[2];
         b_T_a(3,3) =  T(1.0);
 
-
-
         // transform a_X
         Eigen::Matrix<T,4,1> b_X;
         Eigen::Matrix<T,4,1> templaye_a_X;
-        // templaye_a_X << T(a_X(0)),T(a_X(1)),T(a_X(2)),T(1.0);
-        // cout << "{{{{{{{{}}}}}}}}" << a_X << endl;
-        // templaye_a_X(0) = T(a_X(0));
-        // templaye_a_X(1) = T(a_X(1));
-        // templaye_a_X(2) = T(2.0); //T(a_X(2));
-        // templaye_a_X(3) = T(a_X(3));
-
-        // cout << "{{{{{{{{}}}}}}}}" << a_Xx << ","<< a_Xy << ","<< a_Xz << "," << endl;
+     
         templaye_a_X(0) = T(a_Xx);
         templaye_a_X(1) = T(a_Xy);
         templaye_a_X(2) = T(a_Xz);
         templaye_a_X(3) = T(1.0);
         b_X = b_T_a *templaye_a_X;
 
-
         // Perspective-Projection and scaling with K.
-        if( b_X(2) < T(0.01) && b_X(2) > T(-0.01) )
-            return false;
+		if (b_X(2) < T(0.01) && b_X(2) > T(-0.01))
+		{
+			return false;
+		}
         T _u = T(fx) * b_X(0)/b_X(2) + T(cx);
         T _v = T(fy) * b_X(1)/b_X(2) + T(cy);
 
-
-        // double __r;
         interp_a.Evaluate( _u, _v, &residue[0] );
-        // residue[0] = _u*_u + _v*_v;
 
-        // residue[0] = b_X(0) - t[0] ;//+ b_X(1)*b_X(1); //T(__r) ;
         return true;
     }
 
@@ -131,9 +119,6 @@ public:
 		const ceres::BiCubicInterpolator<ceres::Grid2D<double, 1>>& __interpolated_a
 	) : fx(fx), fy(fy), cx(cx), cy(cy), a_X(__a_X), interp_a(__interpolated_a)
 	{
-		// cout << "---\n";
-		// cout << "EAResidue.a_X: "<< a_X << endl;
-		// cout << "fx=" << fx << "fy=" << fy << "cx=" << cx << "cy=" << cy << endl;
 		TransformFromFirstCam(0, 0) = ptrans_1to2[0];
 		TransformFromFirstCam(0, 1) = ptrans_1to2[1];
 		TransformFromFirstCam(0, 2) = ptrans_1to2[2];
@@ -256,9 +241,7 @@ public:
 		templaye_a_X(2) = T(a_Xz);
 		templaye_a_X(3) = T(1.0);
 
-
 		b_X = b_T_a_SecCam * templaye_a_X;
-
 
 		// Perspective-Projection and scaling with K.
 		if (b_X(2) < T(0.01) && b_X(2) > T(-0.01))
@@ -268,8 +251,6 @@ public:
 		T _u = T(fx) * b_X(0) / b_X(2) + T(cx);
 		T _v = T(fy) * b_X(1) / b_X(2) + T(cy);
 
-
-		// double __r;
 		interp_a.Evaluate(_u, _v, &residue[0]);
 
 		return true;

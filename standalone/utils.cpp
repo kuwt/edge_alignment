@@ -105,6 +105,75 @@ void get_distance_transform2(const cv::Mat& input, cv::Mat& out_distance_transfo
 	out_distance_transform = dist.clone();
 }
 
+void get_distance_transform2_masked_normalize(const cv::Mat& input, const cv::Mat& inputmask, cv::Mat& out_distance_transform)
+{
+	cv::Mat img_blur;
+	cv::blur(input, img_blur, cv::Size(3, 3));
+
+	cv::Mat img_blurBW;
+	cv::cvtColor(img_blur, img_blurBW, CV_RGB2GRAY);
+
+	cv::Mat canny_img;
+	cv::Canny(img_blurBW, canny_img, 30, 90);
+
+
+	cv::Mat edges;
+	cv::threshold(canny_img, edges, 127, 255, cv::THRESH_BINARY);
+	cv::imwrite("./log/edges0.png", edges);
+
+	cv::Mat inputmaskbinary;
+	cv::threshold(inputmask, inputmaskbinary, 1, 1, cv::THRESH_BINARY);
+	cv::imwrite("./log/inputmaskbinary.png", inputmaskbinary);
+
+	edges = edges.mul(inputmaskbinary);
+	cv::imwrite("./log/edges1.png", edges);
+
+	// inverted for dt
+	edges = 255 - edges;
+	cv::imwrite("./log/edges2.png", edges);
+
+	// Distance Transform
+	cv::Mat dist;
+	cv::distanceTransform(edges, dist, cv::DIST_L2, 3);
+	normalize(dist, dist, 0, 255, cv::NORM_MINMAX);
+
+	out_distance_transform = dist.clone();
+}
+void get_distance_transform2_masked(const cv::Mat& input, const cv::Mat& inputmask, cv::Mat& out_distance_transform)
+{
+	cv::Mat img_blur;
+	cv::blur(input, img_blur, cv::Size(3, 3));
+
+	cv::Mat img_blurBW;
+	cv::cvtColor(img_blur, img_blurBW, CV_RGB2GRAY);
+
+	cv::Mat canny_img;
+	cv::Canny(img_blurBW, canny_img, 30, 90);
+
+	
+	cv::Mat edges;
+	cv::threshold(canny_img, edges, 127, 255, cv::THRESH_BINARY);
+	cv::imwrite("./log/edges0.png", edges);
+
+	cv::Mat inputmaskbinary;
+	cv::threshold(inputmask, inputmaskbinary, 1, 1, cv::THRESH_BINARY);
+	cv::imwrite("./log/inputmaskbinary.png", inputmaskbinary);
+
+	edges = edges.mul(inputmaskbinary);
+	cv::imwrite("./log/edges1.png", edges);
+
+	// inverted for dt
+	edges = 255 - edges;
+	cv::imwrite("./log/edges2.png", edges);
+
+	// Distance Transform
+	cv::Mat dist;
+	cv::distanceTransform(edges, dist, cv::DIST_L2, 3);
+	//normalize(dist, dist, 0, 255, cv::NORM_MINMAX);
+
+	out_distance_transform = dist.clone();
+}
+
 void get_aX(
 	const cv::Mat& imA, 
 	const cv::Mat& imA_depth, 
