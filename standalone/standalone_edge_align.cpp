@@ -2475,14 +2475,13 @@ int edge_align_test7()
 	*  Initial Guess
 	*
 	* ********************************************/
-
 	// Initial Guess
 	cout << "===========  Initial Guess ============\n";
-	Eigen::Matrix4d b_T_a_optvar;// = Eigen::Matrix4d::Identity();
-	b_T_a_optvar << 0.998434, -0.0528584, 0.0183395, -0.00832753,
+	Eigen::Matrix4d b_T_a_optvar = Eigen::Matrix4d::Identity();
+	/*b_T_a_optvar << 0.998434, -0.0528584, 0.0183395, -0.00832753,
 		0.0481312, 0.978583, 0.200145, -0.0782462,
 		-0.0285261, -0.198949, 0.979595, 0.0060669,
-		0, 0, 0, 1;
+		0, 0, 0, 1;*/
 	cout << "a_X\n" << a_X.leftCols(10) << endl;
 	cout << "a_X2\n" << a_X2.leftCols(10) << endl;
 	cout << "Initial Guess : " << PoseManipUtils::prettyprintMatrix4d(b_T_a_optvar) << endl;
@@ -2500,10 +2499,73 @@ int edge_align_test7()
 
 	s_overlay(imB2, b_u2, "./log/initial2.png");
 
-
 	{
-		//initial cost
+		//1
+		float totalCost = 0;
+		int totalCount = 0;
+		float MaxCost = 0;
+		cv::Point2f maxpixel;
+		int maximage = 0;
+		{
+			cv::Mat the_disTrans = disTrans;
+			Eigen::MatrixXd imagePixel;
+			Eigen::MatrixXd location3D = b_T_a_optvar * a_X;
+			Eigen::MatrixXd unvn = Eigen::MatrixXd(3, location3D.cols());
+			for (int i = 0; i < location3D.cols(); i++)
+			{
+				unvn(0, i) = location3D(0, i) / location3D(2, i);
+				unvn(1, i) = location3D(1, i) / location3D(2, i);
+				unvn(2, i) = 1.0;
+			}
+			imagePixel = K * unvn;
+			
+			for (int i = 0; i < imagePixel.cols(); i++)
+			{
+				float cost = the_disTrans.at<float>((int)imagePixel(1, i), (int)imagePixel(0, i));
+				totalCost += cost;
+				totalCount++;
+				if (cost > MaxCost)
+				{
+					MaxCost = cost;
+					maxpixel = cv::Point2f(imagePixel(0, i), imagePixel(1, i));
+					maximage = 1;
+				}
+			}
+		}
+		//2
+		{
+			cv::Mat the_disTrans = disTrans2;
+			Eigen::MatrixXd imagePixel;
+			Eigen::MatrixXd location3D = TransformFromFirstCam * b_T_a_optvar * TransformFromFirstCamInv * a_X2;
 
+			Eigen::MatrixXd unvn = Eigen::MatrixXd(3, location3D.cols());
+			for (int i = 0; i<location3D.cols(); i++)
+			{
+				unvn(0, i) = location3D(0, i) / location3D(2, i);
+				unvn(1, i) = location3D(1, i) / location3D(2, i);
+				unvn(2, i) = 1.0;
+			}
+
+			imagePixel = K * unvn;
+			for (int i = 0; i < imagePixel.cols(); i++)
+			{
+				float cost = the_disTrans.at<float>((int)imagePixel(1, i), (int)imagePixel(0, i));
+				totalCost += cost;
+				totalCount++;
+				if (cost > MaxCost)
+				{
+					MaxCost = cost;
+					maxpixel = cv::Point2f(imagePixel(0, i), imagePixel(1, i));
+					maximage = 2;
+				}
+			}
+		}
+		float initialCost = (float)totalCost/ (float)totalCount;
+		std::cout << "----->initialTotalCost = " << totalCost << "\n";
+		std::cout << "----->initialCost = " << initialCost << "\n";
+		std::cout << "----->InitialMaxCost = " << MaxCost << "\n";
+		std::cout << "----->Initialmaxpixel = " << maxpixel << "\n";
+		std::cout << "----->Initialmaximage = " << maximage << "\n";
 	}
 	/***********************************************
 	*
@@ -2528,7 +2590,7 @@ int edge_align_test7()
 
 	// Residues for each 3d points
 
-	const int minNumOfPointsPerimage = 200;
+	const int minNumOfPointsPerimage = 1000;
 	int iterStep = 1;
 	if (a_X.cols() > minNumOfPointsPerimage)
 	{
@@ -2540,14 +2602,14 @@ int edge_align_test7()
 	for (int i = 0; i< a_X.cols(); i += iterStep)
 	{
 		ceres::CostFunction * cost_function = EAResidue::Create(fx, fy, cx, cy, a_X(0, i), a_X(1, i), a_X(2, i), interpolated_imb_disTrans);
-		problem.AddResidualBlock(cost_function, new CauchyLoss(1.), b_quat_a, b_t_a);
+		problem.AddResidualBlock(cost_function, new TrivialLoss(), b_quat_a, b_t_a);
 		count++;
 	}
 
 	for (int i = 0; i< a_X2.cols(); i += iterStep)
 	{
 		ceres::CostFunction * cost_function = EAResidueSecondCam::Create(fx2, fy2, cx2, cy2, a_X2(0, i), a_X2(1, i), a_X2(2, i), trans_1to2, trans_1to2_inv, interpolated_imb_disTrans2);
-		problem.AddResidualBlock(cost_function, new CauchyLoss(1.), b_quat_a, b_t_a);
+		problem.AddResidualBlock(cost_function, new TrivialLoss(), b_quat_a, b_t_a);
 		count++;
 	}
 	std::cout << "-----> Use Point count = " << count << "\n";
@@ -2591,6 +2653,65 @@ int edge_align_test7()
 	s_overlay(imB2, b_u2, "./log/final2.png");
 	cvtColor(cannyB2, cannyB2, CV_GRAY2RGB);
 	s_overlay(cannyB2, b_u2, "./log/final2_canny.png");
+
+	{
+		std::cout << "!!!" << disTrans.type() << "\n";
+		//1
+		float totalCost = 0;
+		int totalCount = 0;
+		float MaxCost = 0;
+		{
+			cv::Mat the_disTrans = disTrans;
+			Eigen::MatrixXd imagePixel;
+			Eigen::MatrixXd location3D = b_T_a_optvar * a_X;
+			Eigen::MatrixXd unvn = Eigen::MatrixXd(3, location3D.cols());
+			for (int i = 0; i < location3D.cols(); i++)
+			{
+				unvn(0, i) = location3D(0, i) / location3D(2, i);
+				unvn(1, i) = location3D(1, i) / location3D(2, i);
+				unvn(2, i) = 1.0;
+			}
+			imagePixel = K * unvn;
+			for (int i = 0; i < imagePixel.cols(); i++)
+			{
+				float cost = the_disTrans.at<float>(imagePixel(1, i), imagePixel(0, i));
+				totalCost += cost;
+				totalCount++;
+			}
+		}
+		//2
+		{
+			cv::Mat the_disTrans = disTrans2;
+			Eigen::MatrixXd imagePixel;
+			Eigen::MatrixXd location3D = TransformFromFirstCam * b_T_a_optvar * TransformFromFirstCamInv * a_X2;
+
+			Eigen::MatrixXd unvn = Eigen::MatrixXd(3, location3D.cols());
+			for (int i = 0; i<location3D.cols(); i++)
+			{
+				unvn(0, i) = location3D(0, i) / location3D(2, i);
+				unvn(1, i) = location3D(1, i) / location3D(2, i);
+				unvn(2, i) = 1.0;
+			}
+
+			imagePixel = K * unvn;
+			for (int i = 0; i < imagePixel.cols(); i++)
+			{
+				float cost = the_disTrans.at<float>(imagePixel(1, i), imagePixel(0, i));
+				totalCost += cost;
+				totalCount++;
+				if (cost > MaxCost)
+				{
+					MaxCost = cost;
+				}
+			}
+		}
+		
+		float finalCost = (float)totalCost/ (float)totalCount;
+
+		std::cout << "----->FinalTotalCost = " << totalCost << "\n";
+		std::cout << "----->finalCost = " << finalCost << "\n";
+		std::cout << "----->FinalMaxCost = " << MaxCost << "\n";
+	}
 
 	{
 		Eigen::MatrixXd b_X = b_T_a_optvar * a_X;
