@@ -105,7 +105,7 @@ void get_distance_transform2(const cv::Mat& input, cv::Mat& out_distance_transfo
 	out_distance_transform = dist.clone();
 }
 
-void get_distance_transform2_masked_normalize(const cv::Mat& input, const cv::Mat& inputmask, cv::Mat& out_distance_transform)
+void get_distance_transform2_masked(const cv::Mat& input, const cv::Mat& inputmask, cv::Mat& out_distance_transform)
 {
 	cv::Mat img_blur;
 	cv::blur(input, img_blur, cv::Size(3, 3));
@@ -139,7 +139,31 @@ void get_distance_transform2_masked_normalize(const cv::Mat& input, const cv::Ma
 
 	out_distance_transform = dist.clone();
 }
-void get_distance_transform2_masked(const cv::Mat& input, const cv::Mat& inputmask, cv::Mat& out_distance_transform)
+void get_distance_transform2_NoNormalize(const cv::Mat& input, cv::Mat& out_distance_transform)
+{
+	cv::Mat img_blur;
+	cv::blur(input, img_blur, cv::Size(3, 3));
+
+	cv::Mat img_blurBW;
+	cv::cvtColor(img_blur, img_blurBW, CV_RGB2GRAY);
+
+	cv::Mat canny_img;
+	cv::Canny(img_blurBW, canny_img, 30, 90);
+
+
+	cv::Mat edges;
+	cv::threshold(canny_img, edges, 127, 255, cv::THRESH_BINARY);
+
+	// inverted for dt
+	edges = 255 - edges;
+
+	// Distance Transform
+	cv::Mat dist;
+	cv::distanceTransform(edges, dist, cv::DIST_L2, 3);
+
+	out_distance_transform = dist.clone();
+}
+void get_distance_transform2_masked_NoNormalize(const cv::Mat& input, const cv::Mat& inputmask, cv::Mat& out_distance_transform)
 {
 	cv::Mat img_blur;
 	cv::blur(input, img_blur, cv::Size(3, 3));
@@ -485,6 +509,39 @@ void reproject( const Eigen::MatrixXd& a_X, const Eigen::Matrix4d& b_T_a, const 
     b_u = K * unvn;
 }
 
+void reproject(const Eigen::MatrixXd& a_X, const Eigen::Matrix4d& b_T_a, const Eigen::Matrix3d& K, const Eigen::RowVectorXd& Kc, Eigen::MatrixXd& b_u)
+{
+	Eigen::MatrixXd b_X = b_T_a * a_X;
+
+	Eigen::MatrixXd unvn = Eigen::MatrixXd(3, b_X.cols());
+	for (int i = 0; i<b_X.cols(); i++)
+	{
+		unvn(0, i) = b_X(0, i) / b_X(2, i);
+		unvn(1, i) = b_X(1, i) / b_X(2, i);
+		unvn(2, i) = 1.0;
+	}
+
+	double k1 = Kc(0);
+	double k2 = Kc(1);
+	double k3 = Kc(2);
+	double p1 = Kc(3);
+	double p2 = Kc(4);
+
+	for (int i = 0; i<b_X.cols(); i++)
+	{
+		double x = unvn(0, i);
+		double y = unvn(1, i);
+		double r2 = (x * x + y * y);
+		double r4 = r2 * r2;
+		double r6 = r4 * r2;
+		unvn(0, i) = x * (1.0 + k1 * r2 + k2 * r4 + k3 * r6 ) + 2.0 * p1 * x * y + p2 * (r2 + 2.0 * x * x);
+		unvn(1, i) = y * (1.0 + k1 * r2 + k2 * r4 + k3 * r6) + 2.0 * p2 * x * y + p1 * (r2 + 2.0 * y * y);
+		unvn(2, i) = 1.0;
+	}
+	
+	b_u = K * unvn;
+}
+
 void reproject(const Eigen::MatrixXd& a_X, const Eigen::Matrix4d& b_T_a, const Eigen::Matrix4d& one_T_two, const Eigen::Matrix4d& two_T_one, const Eigen::Matrix3d& K, Eigen::MatrixXd& b_u)
 {
 	Eigen::MatrixXd b_X = one_T_two * b_T_a * two_T_one * a_X;
@@ -494,6 +551,40 @@ void reproject(const Eigen::MatrixXd& a_X, const Eigen::Matrix4d& b_T_a, const E
 	{
 		unvn(0, i) = b_X(0, i) / b_X(2, i);
 		unvn(1, i) = b_X(1, i) / b_X(2, i);
+		unvn(2, i) = 1.0;
+	}
+
+	b_u = K * unvn;
+}
+
+void reproject(const Eigen::MatrixXd& a_X, const Eigen::Matrix4d& b_T_a, const Eigen::Matrix4d& one_T_two, const Eigen::Matrix4d& two_T_one, const Eigen::Matrix3d& K, const Eigen::RowVectorXd& Kc, Eigen::MatrixXd& b_u)
+{
+	Eigen::MatrixXd b_X = one_T_two * b_T_a * two_T_one * a_X;
+
+	Eigen::MatrixXd unvn = Eigen::MatrixXd(3, b_X.cols());
+	for (int i = 0; i<b_X.cols(); i++)
+	{
+		unvn(0, i) = b_X(0, i) / b_X(2, i);
+		unvn(1, i) = b_X(1, i) / b_X(2, i);
+		unvn(2, i) = 1.0;
+	}
+
+
+	double k1 = Kc(0);
+	double k2 = Kc(1);
+	double k3 = Kc(2);
+	double p1 = Kc(3);
+	double p2 = Kc(4);
+
+	for (int i = 0; i<b_X.cols(); i++)
+	{
+		double x = unvn(0, i);
+		double y = unvn(1, i);
+		double r2 = (x * x + y * y);
+		double r4 = r2 * r2;
+		double r6 = r4 * r2;
+		unvn(0, i) = x * (1.0 + k1 * r2 + k2 * r4 + k3 * r6) + 2.0 * p1 * x * y + p2 * (r2 + 2.0 * x * x);
+		unvn(1, i) = y * (1.0 + k1 * r2 + k2 * r4 + k3 * r6) + 2.0 * p2 * x * y + p1 * (r2 + 2.0 * y * y);
 		unvn(2, i) = 1.0;
 	}
 
